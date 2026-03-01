@@ -1,19 +1,38 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { Plus, Search, Filter, FileText, Download, MoreVertical } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Download, MoreVertical, Trash2, AlertCircle, Loader2 } from 'lucide-react';
+import { useDeclarations, useDeleteDeclaration } from '@/api/hooks';
 
 export default function DeclarationsPage() {
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
 
-    // Mock Data
-    const declarations = [
-        { id: 1, postCode: "12345", regDate: "2026-03-01", number: "10001", client: "ООО 'АЛЬФА'", regime: "ИМ40", vehicle: "A123BC", status: "completed" },
-        { id: 2, postCode: "67890", regDate: "2026-03-02", number: "10002", client: "ИП Смирнов", regime: "ЭК10", vehicle: "В456ЕК", status: "in_progress" },
-        { id: 3, postCode: "54321", regDate: "2026-03-03", number: "10003", client: "ZAO BETA", regime: "ИМ70", vehicle: "С789МН", status: "draft" },
-    ];
+    const { data: declarations = [], isLoading, error } = useDeclarations();
+    const deleteMutation = useDeleteDeclaration();
+
+    const filtered = declarations.filter((d: any) => {
+        const q = searchQuery.toLowerCase();
+        const matchesSearch = !q ||
+            d.display_number?.toLowerCase().includes(q) ||
+            d.client_name?.toLowerCase().includes(q) ||
+            d.declaration_number?.toLowerCase().includes(q);
+        return matchesSearch;
+    });
+
+    const handleDelete = async (id: number) => {
+        if (window.confirm('Удалить эту декларацию?')) {
+            try {
+                await deleteMutation.mutateAsync(id);
+            } catch (err: any) {
+                alert(err.response?.data?.detail || 'Ошибка при удалении');
+            }
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -22,11 +41,18 @@ export default function DeclarationsPage() {
                     <h2 className="text-3xl font-display font-semibold tracking-tight">Декларации</h2>
                     <p className="text-muted-foreground mt-1 text-base">Управление и отслеживание таможенных деклараций.</p>
                 </div>
-                <Button className="shrink-0 gap-2">
+                <Button className="shrink-0 gap-2" onClick={() => navigate('/declarations/new')}>
                     <Plus className="w-4 h-4" />
                     Создать декларацию
                 </Button>
             </div>
+
+            {error && (
+                <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center gap-2 border border-destructive/20">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    Не удалось загрузить декларации.
+                </div>
+            )}
 
             <Card className="glass-card">
                 <CardHeader className="pb-4">
@@ -41,15 +67,12 @@ export default function DeclarationsPage() {
                             />
                         </div>
                         <div className="flex gap-2">
-                            <Select className="w-[160px] bg-white/50">
-                                <option value="">Все статусы</option>
-                                <option value="completed">Выпущено</option>
-                                <option value="in_progress">В работе</option>
-                                <option value="draft">Черновик</option>
+                            <Select className="w-[160px] bg-white/50" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                                <option value="">Все режимы</option>
+                                <option value="ИМ/40">ИМ/40</option>
+                                <option value="ЭК/10">ЭК/10</option>
+                                <option value="ИМ/70">ИМ/70</option>
                             </Select>
-                            <Button variant="secondary" size="icon" className="shrink-0">
-                                <Filter className="w-4 h-4" />
-                            </Button>
                         </div>
                     </div>
                 </CardHeader>
@@ -64,45 +87,49 @@ export default function DeclarationsPage() {
                                         <th className="px-6 py-3 font-medium">Клиент</th>
                                         <th className="px-6 py-3 font-medium">Режим</th>
                                         <th className="px-6 py-3 font-medium">Транспорт</th>
-                                        <th className="px-6 py-3 font-medium">Статус</th>
                                         <th className="px-6 py-3 font-medium text-right">Действия</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/40">
-                                    {declarations.map((item) => (
-                                        <tr key={item.id} className="hover:bg-white/40 transition-colors group">
-                                            <td className="px-6 py-4 font-medium flex items-center gap-2">
-                                                <FileText className="w-4 h-4 text-brand-600" />
-                                                {item.number}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div>{item.postCode}</div>
-                                                <div className="text-xs text-muted-foreground">{item.regDate}</div>
-                                            </td>
-                                            <td className="px-6 py-4">{item.client}</td>
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
-                                                    {item.regime}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">{item.vehicle}</td>
-                                            <td className="px-6 py-4">
-                                                {item.status === 'completed' && <span className="text-brand-600 bg-brand-500/10 px-2 py-1 rounded-full text-xs font-medium border border-brand-500/20">Выпущено</span>}
-                                                {item.status === 'in_progress' && <span className="text-blue-600 bg-blue-500/10 px-2 py-1 rounded-full text-xs font-medium border border-blue-500/20">В работе</span>}
-                                                {item.status === 'draft' && <span className="text-muted-foreground bg-muted px-2 py-1 rounded-full text-xs font-medium border border-border/40">Черновик</span>}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <Download className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {isLoading ? (
+                                        <tr><td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                                            <Loader2 className="w-5 h-5 animate-spin inline-block mr-2" />Загрузка...
+                                        </td></tr>
+                                    ) : filtered.length === 0 ? (
+                                        <tr><td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                                            Декларации не найдены
+                                        </td></tr>
+                                    ) : (
+                                        filtered.map((item: any) => (
+                                            <tr key={item.id} className="hover:bg-white/40 transition-colors group">
+                                                <td className="px-6 py-4 font-medium flex items-center gap-2">
+                                                    <FileText className="w-4 h-4 text-brand-600" />
+                                                    {item.display_number || item.declaration_number}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div>{item.post_number}</div>
+                                                    <div className="text-xs text-muted-foreground">{item.send_date}</div>
+                                                </td>
+                                                <td className="px-6 py-4">{item.client_name || '—'}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
+                                                        {item.regime}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.vehicles?.map((v: any) => v.vehicle_number).join(', ') || '—'}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                            onClick={() => handleDelete(item.id)}>
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>

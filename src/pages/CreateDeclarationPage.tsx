@@ -1,26 +1,77 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
-import { ArrowLeft, Save, UploadCloud } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
+import { useClients, useCreateDeclaration } from '@/api/hooks';
+
+const REGIMES = [
+    "ЭК/10", "ЭК/11", "ЭК/12", "ИМ/40", "ИМ/41", "ИМ/42",
+    "ИМ/51", "ЭК/51", "ЭК/61", "ИМ/61", "ИМ/70", "ИМ/71",
+    "ЭК/71", "ИМ/72", "ЭК/72", "ИМ/73", "ЭК/73", "ИМ/74",
+    "ЭК/74", "ИМ/75", "ЭК/75", "ИМ/76", "ТР/80",
+];
+
+const VEHICLE_TYPES = [
+    "10/МОРСКОЙ", "20/ЖД", "30/АВТО", "40/АВИА",
+    "71/ТРУБОПРОВОД", "72/ЛЭП", "80/РЕЧНОЙ", "90/САМОХОД"
+];
 
 export default function CreateDeclarationPage() {
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const navigate = useNavigate();
+    const { data: clients = [] } = useClients();
+    const createDeclaration = useCreateDeclaration();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const [form, setForm] = useState({
+        post_number: '',
+        send_date: '',
+        declaration_number: '',
+        client_id: '',
+        regime: '',
+        vehicle_type: '30/АВТО',
+        vehicle_number: '',
+        note: '',
+    });
+    const [formError, setFormError] = useState('');
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsSubmitting(true);
-        // Mock save
-        setTimeout(() => setIsSubmitting(false), 1000);
+        setFormError('');
+
+        if (!form.post_number || !form.send_date || !form.declaration_number || !form.client_id || !form.regime || !form.vehicle_number) {
+            setFormError('Заполните все обязательные поля');
+            return;
+        }
+
+        try {
+            await createDeclaration.mutateAsync({
+                post_number: form.post_number,
+                send_date: form.send_date,
+                declaration_number: form.declaration_number,
+                client_id: Number(form.client_id),
+                regime: form.regime,
+                vehicles: [{ vehicle_type: form.vehicle_type, vehicle_number: form.vehicle_number }],
+                note: form.note || undefined,
+            });
+            navigate('/declarations');
+        } catch (err: any) {
+            const detail = err.response?.data?.detail;
+            if (Array.isArray(detail)) {
+                setFormError(detail.map((d: any) => d.msg).join('; '));
+            } else {
+                setFormError(detail || 'Ошибка при создании декларации');
+            }
+        }
     };
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full hover:bg-white/50">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full hover:bg-white/50" onClick={() => navigate('/declarations')}>
                         <ArrowLeft className="w-5 h-5" />
                     </Button>
                     <div>
@@ -29,89 +80,78 @@ export default function CreateDeclarationPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="secondary" className="gap-2">
-                        Сохранить черновик
-                    </Button>
-                    <Button onClick={handleSubmit} isLoading={isSubmitting} className="gap-2">
+                    <Button variant="secondary" onClick={() => navigate('/declarations')}>Отмена</Button>
+                    <Button onClick={handleSubmit} isLoading={createDeclaration.isPending} className="gap-2">
                         <Save className="w-4 h-4" />
                         Выпустить
                     </Button>
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            {formError && (
+                <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm border border-destructive/20">{formError}</div>
+            )}
 
-                {/* Main Info */}
+            <form onSubmit={handleSubmit} className="space-y-8">
                 <Card className="glass-card">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Основные сведения</CardTitle>
-                    </CardHeader>
+                    <CardHeader><CardTitle className="text-lg">Основные сведения</CardTitle></CardHeader>
                     <CardContent className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-2">
-                            <Label htmlFor="postCode">Код поста</Label>
-                            <Input id="postCode" placeholder="Например: 12345" required />
+                            <Label htmlFor="postCode">Код поста (5 цифр) *</Label>
+                            <Input id="postCode" placeholder="12345" required maxLength={5}
+                                value={form.post_number} onChange={e => setForm({ ...form, post_number: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="regDate">Дата регистрации</Label>
-                            <Input id="regDate" type="date" required />
+                            <Label htmlFor="regDate">Дата отправления *</Label>
+                            <Input id="regDate" type="date" required
+                                value={form.send_date} onChange={e => setForm({ ...form, send_date: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="number">Номер ГТД</Label>
-                            <Input id="number" placeholder="Например: 10001" required />
+                            <Label htmlFor="number">Номер декларации (7 цифр) *</Label>
+                            <Input id="number" placeholder="0010722" required maxLength={7}
+                                value={form.declaration_number} onChange={e => setForm({ ...form, declaration_number: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="regime">Режим</Label>
-                            <Select id="regime" required>
+                            <Label htmlFor="regime">Режим *</Label>
+                            <Select id="regime" required value={form.regime} onChange={e => setForm({ ...form, regime: e.target.value })}>
                                 <option value="">Выберите режим...</option>
-                                <option value="im40">ИМ40 (Выпуск для внутр. потреб.)</option>
-                                <option value="im70">ИМ70 (Таможенный склад)</option>
-                                <option value="im74">ИМ74 (Таможенный склад - другой)</option>
-                                <option value="ek10">ЭК10 (Экспорт)</option>
+                                {REGIMES.map(r => <option key={r} value={r}>{r}</option>)}
                             </Select>
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="client">Клиент (Владелец груза)</Label>
-                            <Select id="client" required>
+                            <Label htmlFor="client">Клиент (Владелец груза) *</Label>
+                            <Select id="client" required value={form.client_id} onChange={e => setForm({ ...form, client_id: e.target.value })}>
                                 <option value="">Выберите клиента из базы...</option>
-                                <option value="1">ООО "АЛЬФА" (ИНН: 123456789)</option>
-                                <option value="2">ИП Смирнов (ИНН: 987654321)</option>
+                                {clients.map((c: any) => (
+                                    <option key={c.id} value={c.id}>{c.company_name}{c.inn ? ` (ИНН: ${c.inn})` : ''}</option>
+                                ))}
                             </Select>
                         </div>
-                        <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="vehicle">Номер Транспортного Средства</Label>
-                            <Input id="vehicle" placeholder="A123BC, B456EK..." required />
+                        <div className="space-y-2">
+                            <Label>Тип транспорта *</Label>
+                            <Select value={form.vehicle_type} onChange={e => setForm({ ...form, vehicle_type: e.target.value })}>
+                                {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Номер ТС *</Label>
+                            <Input placeholder="A123BC" required value={form.vehicle_number}
+                                onChange={e => setForm({ ...form, vehicle_number: e.target.value })} />
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Notes & Files */}
                 <Card className="glass-card">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Детали и документы</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="notes">Примечания (необязательно)</Label>
-                            <textarea
-                                id="notes"
-                                className="input-base min-h-[100px] resize-y p-3"
-                                placeholder="Особые отметки, комментарии для сертификатчиков..."
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Прикрепленные файлы (Инвойс, CMR, Упаковочный)</Label>
-                            <div className="border-2 border-dashed border-border/60 hover:border-brand-500/50 hover:bg-white/40 bg-white/20 transition-all rounded-xl p-8 text-center cursor-pointer flex flex-col items-center justify-center gap-2">
-                                <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 mb-2">
-                                    <UploadCloud className="w-6 h-6" />
-                                </div>
-                                <p className="text-sm font-medium">Нажмите для загрузки или перетащите файлы сюда</p>
-                                <p className="text-xs text-muted-foreground">PDF, JPG, PNG (макс. 10MB)</p>
-                            </div>
-                        </div>
+                    <CardHeader><CardTitle className="text-lg">Примечания</CardTitle></CardHeader>
+                    <CardContent>
+                        <textarea
+                            className="input-base min-h-[100px] resize-y p-3 w-full"
+                            placeholder="Особые отметки, комментарии..."
+                            value={form.note}
+                            onChange={e => setForm({ ...form, note: e.target.value })}
+                        />
                     </CardContent>
                 </Card>
-
             </form>
         </div>
     );

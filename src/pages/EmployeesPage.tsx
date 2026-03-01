@@ -2,20 +2,42 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Search, UserPlus, Shield, User, Lock, ArrowRightLeft, UserX } from 'lucide-react';
+import { Search, UserPlus, Shield, User, Lock, ArrowRightLeft, UserX, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useEmployees, useBlockEmployee, useUnblockEmployee } from '@/api/hooks';
 
 export default function EmployeesPage() {
     const { user } = useAuthStore();
     const isDirector = user?.role === 'director' || user?.role === 'admin';
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Mock Data
-    const employees = [
-        { id: 1, name: "Иванов Иван", role: "director", phone: "+7 (900) 111-22-33", email: "ivanov@test.ru", status: "active" },
-        { id: 2, name: "Петрова Анна", role: "senior", phone: "+7 (900) 222-33-44", email: "petrova@test.ru", status: "active" },
-        { id: 3, name: "Сидоров Алексей", role: "standard", phone: "+7 (900) 333-44-55", email: "sidorov@test.ru", status: "blocked" },
-    ];
+    const { data: employeesData, isLoading, error } = useEmployees();
+    const blockEmployee = useBlockEmployee();
+    const unblockEmployee = useUnblockEmployee();
+
+    // The API returns { my_company: { name, members: [...] }, partner_companies: [...] }
+    const myMembers = employeesData?.my_company?.members || [];
+    const partnerCompanies = employeesData?.partner_companies || [];
+
+    const filtered = myMembers.filter((emp: any) => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return emp.full_name?.toLowerCase().includes(q) ||
+            emp.email?.toLowerCase().includes(q);
+    });
+
+    const handleBlock = async (userId: number) => {
+        if (!window.confirm('Заблокировать этого сотрудника?')) return;
+        try { await blockEmployee.mutateAsync(userId); } catch (err: any) {
+            alert(err.response?.data?.detail || 'Ошибка');
+        }
+    };
+
+    const handleUnblock = async (userId: number) => {
+        try { await unblockEmployee.mutateAsync(userId); } catch (err: any) {
+            alert(err.response?.data?.detail || 'Ошибка');
+        }
+    };
 
     const RoleBadge = ({ role }: { role: string }) => {
         switch (role) {
@@ -32,25 +54,21 @@ export default function EmployeesPage() {
                     <h2 className="text-3xl font-display font-semibold tracking-tight">Сотрудники</h2>
                     <p className="text-muted-foreground mt-1 text-base">Управление персоналом вашей компании.</p>
                 </div>
-                {isDirector && (
-                    <Button className="shrink-0 gap-2">
-                        <UserPlus className="w-4 h-4" />
-                        Пригласить сотрудника
-                    </Button>
-                )}
             </div>
+
+            {error && (
+                <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center gap-2 border border-destructive/20">
+                    <AlertCircle className="w-4 h-4 shrink-0" />Не удалось загрузить сотрудников.
+                </div>
+            )}
 
             <Card className="glass-card">
                 <CardHeader className="pb-4">
                     <div className="flex flex-col md:flex-row gap-4">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Поиск по имени, email или телефону..."
-                                className="pl-9 bg-white/50"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
+                            <Input placeholder="Поиск по имени, email или телефону..." className="pl-9 bg-white/50"
+                                value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                         </div>
                     </div>
                 </CardHeader>
@@ -67,55 +85,82 @@ export default function EmployeesPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/40">
-                                    {employees.map((emp) => (
-                                        <tr key={emp.id} className={`hover:bg-white/60 transition-colors group ${emp.status === 'blocked' ? 'opacity-50 grayscale' : ''}`}>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold shrink-0">
-                                                        {emp.name.split(' ').map(n => n[0]).join('')}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-medium text-base flex items-center gap-2">
-                                                            {emp.name}
-                                                            {emp.status === 'blocked' && <span className="text-xs text-destructive border border-destructive/20 bg-destructive/10 px-1.5 rounded">Заблокирован</span>}
+                                    {isLoading ? (
+                                        <tr><td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
+                                            <Loader2 className="w-5 h-5 animate-spin inline-block mr-2" />Загрузка...
+                                        </td></tr>
+                                    ) : filtered.length === 0 ? (
+                                        <tr><td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">Сотрудники не найдены</td></tr>
+                                    ) : (
+                                        filtered.map((emp: any) => (
+                                            <tr key={emp.user_id} className={`hover:bg-white/60 transition-colors group ${emp.is_blocked ? 'opacity-50 grayscale' : ''}`}>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold shrink-0">
+                                                            {emp.full_name?.split(' ').map((n: string) => n[0]).join('') || '?'}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium text-base flex items-center gap-2">
+                                                                {emp.full_name}
+                                                                {emp.is_blocked && <span className="text-xs text-destructive border border-destructive/20 bg-destructive/10 px-1.5 rounded">Заблокирован</span>}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <RoleBadge role={emp.role} />
-                                            </td>
-                                            <td className="px-6 py-4 text-muted-foreground">
-                                                <div className="text-xs">{emp.phone}</div>
-                                                <div className="text-xs">{emp.email}</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                {isDirector && emp.role !== 'director' && (
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button variant="ghost" size="icon" title="Передать данные" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
-                                                            <ArrowRightLeft className="w-4 h-4" />
-                                                        </Button>
-                                                        {emp.status === 'active' ? (
-                                                            <Button variant="ghost" size="icon" title="Заблокировать" className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50">
-                                                                <Lock className="w-4 h-4" />
-                                                            </Button>
-                                                        ) : (
-                                                            <Button variant="ghost" size="icon" title="Разблокировать" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50">
-                                                                <Lock className="w-4 h-4" />
-                                                            </Button>
-                                                        )}
-                                                        <Button variant="ghost" size="icon" title="Удалить" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
-                                                            <UserX className="w-4 h-4" />
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                                <td className="px-6 py-4"><RoleBadge role={emp.role || 'standard'} /></td>
+                                                <td className="px-6 py-4 text-muted-foreground">
+                                                    <div className="text-xs">{emp.phone || '—'}</div>
+                                                    <div className="text-xs">{emp.email || '—'}</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    {isDirector && emp.role !== 'director' && (
+                                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            {!emp.is_blocked ? (
+                                                                <Button variant="ghost" size="icon" title="Заблокировать" className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                                                    onClick={() => handleBlock(emp.user_id)}>
+                                                                    <Lock className="w-4 h-4" />
+                                                                </Button>
+                                                            ) : (
+                                                                <Button variant="ghost" size="icon" title="Разблокировать" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                                    onClick={() => handleUnblock(emp.user_id)}>
+                                                                    <Lock className="w-4 h-4" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
+
+                    {/* Partner Companies Section */}
+                    {partnerCompanies.length > 0 && (
+                        <div className="mt-6">
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Сотрудники партнёров</h3>
+                            {partnerCompanies.map((pc: any) => (
+                                <div key={pc.company_id || pc.name} className="mb-4">
+                                    <h4 className="text-sm font-semibold mb-2">{pc.name}</h4>
+                                    <div className="space-y-2">
+                                        {pc.members?.map((m: any) => (
+                                            <div key={m.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/40">
+                                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                                                    {m.full_name?.split(' ').map((n: string) => n[0]).join('') || '?'}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium">{m.full_name}</div>
+                                                    <div className="text-xs text-muted-foreground">{m.role || 'Сотрудник'}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
