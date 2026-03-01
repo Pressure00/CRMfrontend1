@@ -4,19 +4,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
-import { Plus, Search, CheckSquare, Clock, AlertCircle as AlertCircleIcon, MoreHorizontal, Loader2 } from 'lucide-react';
+import { Plus, Search, CheckSquare, Clock, AlertCircle as AlertCircleIcon, Loader2 } from 'lucide-react';
 import { useTasks, useCreateTask, useUpdateTask } from '@/api/hooks';
 import { useAuthStore } from '@/store/authStore';
 
-const STATUS_MAP: Record<string, string> = {
-    new: 'todo',
-    in_progress: 'in_progress',
-    waiting: 'in_progress',
-    on_review: 'review',
-    completed: 'done',
-    cancelled: 'done',
-    frozen: 'todo',
-};
+
 
 const COLUMNS = [
     { id: 'todo', title: 'К выполнению', color: 'bg-muted/50 border-border/40', statuses: ['new', 'frozen'] },

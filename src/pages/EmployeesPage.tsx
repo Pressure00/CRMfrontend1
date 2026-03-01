@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Search, UserPlus, Shield, User, Lock, ArrowRightLeft, UserX, AlertCircle, Loader2 } from 'lucide-react';
+import { Search, Shield, User, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useEmployees, useBlockEmployee, useUnblockEmployee } from '@/api/hooks';
 

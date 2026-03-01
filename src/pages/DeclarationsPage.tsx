@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { Plus, Search, Filter, FileText, Download, MoreVertical, Trash2, AlertCircle, Loader2 } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, AlertCircle, Loader2 } from 'lucide-react';
 import { useDeclarations, useDeleteDeclaration } from '@/api/hooks';
 
 export default function DeclarationsPage() {

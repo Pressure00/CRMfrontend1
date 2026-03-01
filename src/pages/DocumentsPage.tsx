@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
-import { Search, Filter, Folder, File, FileText, Image as ImageIcon, MoreVertical, Upload, Lock, Unlock, Users, Trash2, AlertCircle, Loader2 } from 'lucide-react';
+import { Search, Folder, File, FileText, Image as ImageIcon, Upload, Lock, Unlock, Users, Trash2, AlertCircle, Loader2 } from 'lucide-react';
 import { useFolders, useDocuments, useCreateFolder, useUploadDocument, useDeleteDocument, useDeleteFolder } from '@/api/hooks';
 
 export default function DocumentsPage() {

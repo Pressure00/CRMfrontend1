@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
-import { Plus, Search, Building2, Phone, Mail, FileText, MoreVertical, Trash2, AlertCircle, Loader2 } from 'lucide-react';
+import { Plus, Search, Building2, FileText, Trash2, AlertCircle, Loader2 } from 'lucide-react';
 import { useClients, useCreateClient, useDeleteClient } from '@/api/hooks';
 
 export default function ClientsPage() {
