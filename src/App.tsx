@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from './store/authStore';
@@ -18,7 +19,15 @@ import DeclarationsPage from './pages/DeclarationsPage';
 import CreateDeclarationPage from './pages/CreateDeclarationPage';
 import CertificatesPage from './pages/CertificatesPage';
 import TasksPage from './pages/TasksPage';
-import { ClientsPage, SettingsPage, AdminDashboardPage } from './pages/Placeholders';
+import DocumentsPage from './pages/DocumentsPage';
+import ClientsPage from './pages/ClientsPage';
+import PartnershipsPage from './pages/PartnershipsPage';
+import EmployeesPage from './pages/EmployeesPage';
+import RequestsPage from './pages/RequestsPage';
+import SettingsPage from './pages/SettingsPage';
+
+// Admin Pages
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 
 const Layout = ({ children }: { children: React.ReactNode }) => (
   <div className="flex bg-[#f0f1f3] min-h-screen font-sans selection:bg-brand-500/30">
@@ -72,7 +81,11 @@ export default function App() {
           <Route path="/declarations/new" element={<ProtectedRoute><CreateDeclarationPage /></ProtectedRoute>} />
           <Route path="/certificates" element={<ProtectedRoute><CertificatesPage /></ProtectedRoute>} />
           <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
+          <Route path="/documents" element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>} />
           <Route path="/clients" element={<ProtectedRoute><ClientsPage /></ProtectedRoute>} />
+          <Route path="/partnerships" element={<ProtectedRoute><PartnershipsPage /></ProtectedRoute>} />
+          <Route path="/employees" element={<ProtectedRoute><EmployeesPage /></ProtectedRoute>} />
+          <Route path="/requests" element={<ProtectedRoute><RequestsPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 
           {/* Admin Routes */}
