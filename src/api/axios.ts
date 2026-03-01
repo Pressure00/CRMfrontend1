@@ -19,8 +19,9 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Auto logout on unauthorized
+            // Auto logout on unauthorized (expired/invalid token)
             useAuthStore.getState().logout();
+            window.location.href = '/login';
         }
         return Promise.reject(error);
     }
