@@ -1,0 +1,10 @@
+{
+    "appName": "TributeOne CRM",
+    "companyName": "Tribute One",
+    "logoUrl": "/logo.svg",
+    "faviconUrl": "/favicon.ico",
+    "theme": {
+        "primaryColor": "#c7f284",
+        "primaryColorHover": "#b0d96d"
+    }
+}
