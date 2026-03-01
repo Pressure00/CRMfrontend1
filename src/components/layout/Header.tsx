@@ -8,10 +8,11 @@ export default function Header() {
     const [showNotifications, setShowNotifications] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const { data: notifications = [] } = useNotifications();
+    const { data: notifData } = useNotifications();
     const markRead = useMarkNotificationRead();
 
-    const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+    const notifications = Array.isArray(notifData) ? notifData : (notifData?.notifications || []);
+    const unreadCount = notifData?.unread_count ?? notifications.filter((n: any) => !n.is_read).length;
 
     useEffect(() => {
         const handleClick = (e: MouseEvent) => {
